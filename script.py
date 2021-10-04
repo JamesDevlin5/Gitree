@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+from enum import Enum
 from pathlib import PurePath
 
 
@@ -15,15 +16,30 @@ class Color:
     def code(self):
         return self._code
 
+    def to_bold(self):
+        return BoldColor(self.code)
+
 
 class BoldColor(Color):
     def __init__(self, code):
-        super().__init__("1;" + code)
+        super().__init__(code + ";1")
 
 
 class ResetColor(Color):
     def __init__(self):
         super().__init__(0)
+
+
+class ColorMap(Enum):
+    BLACK = Color(30)
+    RED = Color(31)
+    GREEN = Color(32)
+    YELLOW = Color(33)
+    BLUE = Color(34)
+    PURPLE = Color(35)
+    CYAN = Color(36)
+    WHITE = Color(37)
+    RESET = ResetColor()
 
 
 class Node:
@@ -63,9 +79,9 @@ class DirNode(Node):
 
 
 class FileNode(Node):
-    def __init__(self, name, status):
+    def __init__(self, name, stat):
         super().__init__(name)
-        self._stat = status
+        self._stat = Status(stat)
 
     @property
     def status(self):
@@ -76,11 +92,22 @@ class FileNode(Node):
 
 
 class Status:
+    color_map = {
+        " ": ColorMap.WHITE,  # Unmodified
+        "M": ColorMap.YELLOW,  # Modified
+        "A": ColorMap.GREEN,  # Added
+        "D": ColorMap.RED,  # Deleted
+        "R": ColorMap.PURPLE,  # Renamed
+        "C": ColorMap.BLUE,  # Copied
+        "U": ColorMap.YELLOW,  # Updated (but not merged)
+    }
+
     def __init__(self, string):
         self._string = string
 
     def __str__(self):
-        return self._string + ": "
+        return f"{self._string}"
+        # return f"{Status.color_map[self._string].value}[{self._string}]: "
 
 
 class StatusEntry:
@@ -126,14 +153,26 @@ class StatusTree:
                     print(prefix + "├─ " + item.name)
                     print_worker(prefix + "│ ", item.children)
                 else:
-                    print(prefix + "├─ " + str(item.status) + item.name)
+                    print(
+                        prefix
+                        + "├─ "
+                        + str(item.status)
+                        + item.name
+                        + str(ColorMap.RESET.value)
+                    )
             if len(items) > 0:
                 item = items[-1]
                 if item.is_dir():
                     print(prefix + "└─ " + item.name)
                     print_worker(prefix + "  ", item.children)
                 else:
-                    print(prefix + "└─ " + str(item.status) + item.name)
+                    print(
+                        prefix
+                        + "└─ "
+                        + str(item.status)
+                        + item.name
+                        + str(ColorMap.RESET.value)
+                    )
 
         print_worker(prefix="", items=self._items.children)
 
